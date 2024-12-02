@@ -2,77 +2,92 @@ package com.example.androidcomposeviewmodellearning
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.room.*
 import androidx.room.ColumnInfo
-import androidx.room.Dao
-import androidx.room.Database
-import androidx.room.Delete
 import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.Update
-import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 @Entity(tableName = "users")
-data class Users(
-    @PrimaryKey(autoGenerate = true) val uid: Int,
-    @ColumnInfo(name = "email") val lastName: String?,
-    @ColumnInfo(name = "name") val firstName: String?,
+data class User(
+    @PrimaryKey(autoGenerate = true) val uid: Int = 0,
+    @ColumnInfo(name = "email") val email: String?,
+    @ColumnInfo(name = "name") val name: String?,
     @ColumnInfo(name = "password") val password: String?
 )
 
 @Dao
-interface UsersDao {
+interface UserDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(user: Users)
+    suspend fun insert(user: User)
 
     @Query("SELECT * FROM users WHERE uid = :userId")
-    suspend fun getUserById(userId: Int): Users?
+    suspend fun getUserById(userId: Int): User?
 
     @Query("SELECT * FROM users")
-    suspend fun getAllUsers(): List<Users>
+    fun getAllUsers(): Flow<List<User>>
 
     @Update
-    suspend fun updateUser(user: Users)
+    suspend fun updateUser(user: User)
 
     @Delete
-    suspend fun deleteUser(user: Users)
+    suspend fun deleteUser(user: User)
 }
 
-@Database(entities = [Users::class], version = 1, exportSchema = false)
+@Database(entities = [User::class], version = 1)
+abstract class UserDatabase : RoomDatabase() {
+    abstract fun userDao(): UserDao
 
+    companion object {
+        @Volatile
+        private var INSTANCE: UserDatabase? = null
 
-class UsersRepository(private val usersDao: UsersDao) {
-    suspend fun insert(user: Users) {
-        usersDao.insert(user)
-    }
-
-    suspend fun getUserById(userId: Int): Users? {
-        return usersDao.getUserById(userId)
-    }
-
-    suspend fun getAllUsers(): List<Users> {
-        return usersDao.getAllUsers()
-    }
-
-    suspend fun updateUser(user: Users) {
-        usersDao.updateUser(user)
-    }
-
-    suspend fun deleteUser(user: Users) {
-        usersDao.deleteUser(user)
-    }
-}
-
-class UsersViewModel(private val repository: UsersRepository) : ViewModel() {
-    fun insert(user: Users) {
-        viewModelScope.launch {
-            repository.insert(user)
+        fun getDatabase(context: Context): UserDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    UserDatabase::class.java,
+                    "user_database"
+                ).build()
+                INSTANCE = instance
+                instance
+            }
         }
+    }
+}
+
+class UserViewModel(private val userDao: UserDao) : ViewModel() {
+
+    private val _users = MutableStateFlow<List<User>>(emptyList())
+    val users: StateFlow<List<User>> = _users.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            userDao.getAllUsers().collect { userList ->
+                _users.value = userList
+            }
+        }
+    }
+
+    fun insertUser(user: User) {
+        viewModelScope.launch {
+            userDao.insert(user)
+        }
+    }
+}
+
+class UserViewModelFactory(private val userDao: UserDao) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(UserViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return UserViewModel(userDao) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
