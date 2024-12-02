@@ -31,63 +31,59 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.core.DataStore
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.androidcomposeviewmodellearning.ui.theme.AndroidComposeViewModellearningTheme
 import java.util.prefs.Preferences
 
 class MainActivity : ComponentActivity() {
-    private val viewModel by viewModels<countViewModel>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Main(viewModel)
+            Main()
         }
     }
 }
 
 @Composable
-fun greeting(viewModel: countViewModel) {
-    val context = LocalContext.current
-    val sharedPref = context.getSharedPreferences("test", Context.MODE_PRIVATE)
-    var countSaved = sharedPref.getInt("count", 0)
-    var count by rememberSaveable { mutableStateOf(countSaved) }
+//fun signUp(viewModel: UsersViewModel = viewModel()) {
+fun signUp() {
+    var name by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
 
     Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
     ) {
-        Text(count.toString(), fontSize = 50.sp)
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {
-            count++
-            sharedPref.edit().putInt("count", count).apply()
-        }) {
-            Text("Click me")
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                count = 0
-                sharedPref.edit().putInt("count", count).apply()
-            }
-        ) {
-            Text("clear data")
-        }
-    }
-}
-
-@Composable
-fun signUp() {
-    Column {
         Text("Sign Up", fontSize = 30.sp)
         Spacer(modifier = Modifier.height(30.dp))
-
+        TextField(
+            value = name,
+            onValueChange = { email = it },
+            label = { Text("Name") }
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        TextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") }
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        TextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") }
+        )
+        Spacer(modifier = Modifier.height(40.dp))
+        Button(onClick = { /*TODO*/ }) {
+            Text("Sign Up")
+        }
     }
 }
 
 @Composable
-fun Main(viewModel: countViewModel) {
-//    greeting(viewModel)
+fun Main() {
     signUp()
 }
