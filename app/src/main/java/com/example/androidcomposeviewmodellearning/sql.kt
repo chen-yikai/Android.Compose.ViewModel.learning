@@ -46,6 +46,7 @@ interface UsersDao {
 
 @Database(entities = [Users::class], version = 1, exportSchema = false)
 
+
 class UsersRepository(private val usersDao: UsersDao) {
     suspend fun insert(user: Users) {
         usersDao.insert(user)
